@@ -32,9 +32,11 @@ void loop()
 {
     TempHumidity temperature_humidity;
     humidity_temp_read(temperature_humidity);
+    delay(1000);
     light_level_read();
+    delay(1000);
     soil_moisture_read();
-    delay(2000);
+    delay(1000);
 }
 
 void humidity_temp_read(TempHumidity &th)
