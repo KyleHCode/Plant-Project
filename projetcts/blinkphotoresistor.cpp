@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #define LED_BUILTIN 2
-#define PHOTORESISTOR_INPUT_PIN 35
+
+const int sensor_pin = 35;
 
 void setup()
 {
@@ -9,7 +10,7 @@ void setup()
 
 void loop()
 {
-    int delay_val = analogRead(PHOTORESISTOR_INPUT_PIN)
+    int delay_val = analogRead(sensor_pin);
     digitalWrite(LED_BUILTIN, HIGH);
     delay(delay_val);
     digitalWrite(LED_BUILTIN, LOW);
