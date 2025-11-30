@@ -5,7 +5,10 @@
 #define DHTPIN 4       // GPIO pin connected to DATA
 #define DHTTYPE DHT11   // DHT 11
 const int LIGHT_SENSOR_PIN = 35; // GPIO pin connected to photoresistor
-const int SOIL_MOISTURE_PIN = 34; // GPIO pin connected to soil moisture sensor
+const int SOIL_MOISTURE_BASIL_PIN = 34; // GPIO pin connected to soil moisture sensor
+const int SOIL_MOISTURE_SPRING_ONION_PIN = 33; // GPIO pin connected to soil moisture sensor
+const int SOIL_MOISTURE_ROSEMARY_PIN = 32; // GPIO pin connected to soil moisture sensor
+
 
 // Initialize DHT sensor
 DHT dht(DHTPIN, DHTTYPE);
@@ -14,6 +17,22 @@ DHT dht(DHTPIN, DHTTYPE);
 struct TempHumidity {
     float temperature;
     float humidity;
+};
+
+// Soil Moisture Struct
+struct SoilMoisture {
+    int basil;
+    int spring_onion;
+    int rosemary;
+
+    const char* plant_names[3] = {"Basil", "Spring Onion", "Rosemary"};
+
+    void to_array(int out[3]) const
+    {
+        out[0] = basil;
+        out[1] = spring_onion;
+        out[2] = rosemary;
+    };
 };
 
 void setup() 
@@ -44,7 +63,7 @@ void humidity_temp_read(TempHumidity &th)
     th.humidity = dht.readHumidity();
     th.temperature = dht.readTemperature();
 
-    if (isnan(th.humidity) || isnan(th.temperature)) 
+    if (isnan(th.humidity) || isnan(th.temperature))
     {
         Serial.println("Failed to read from DHT sensor!");
         return;
@@ -67,7 +86,21 @@ void light_level_read()
 
 void soil_moisture_read()
 {
-    int soil_moisture = analogRead(SOIL_MOISTURE_PIN);
-    Serial.print("Soil Moisture Level (ADC): ");
-    Serial.println(soil_moisture);
+    SoilMoisture soil_moisture;
+    soil_moisture.basil        = map(analogRead(SOIL_MOISTURE_BASIL_PIN), 2400, 900, 0, 100);
+    soil_moisture.spring_onion = map(analogRead(SOIL_MOISTURE_SPRING_ONION_PIN), 2400, 900, 0, 100);
+    soil_moisture.rosemary     = map(analogRead(SOIL_MOISTURE_ROSEMARY_PIN), 2400, 900, 0, 100);
+    soil_moisture.basil        = constrain(soil_moisture.basil,        0, 100);
+    soil_moisture.spring_onion = constrain(soil_moisture.spring_onion, 0, 100);
+    soil_moisture.rosemary     = constrain(soil_moisture.rosemary,     0, 100); 
+
+    int values[3];
+    soil_moisture.to_array(values);
+
+    for (int i = 0; i < 3; i++)
+    {
+        Serial.print(soil_moisture.plant_names[i]);
+        Serial.print(" Level (%): ");
+        Serial.println(values[i]);
+    }
 }
