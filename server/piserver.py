@@ -84,8 +84,8 @@ def latest():
 # Test endpoint to delete the latest sensor data
 @app.route("/delete_latest", methods=["POST"])
 def delete_latest():
-    conn = sqlite3.connect(DB)
-    conn.execute("""
+    with get_conn() as conn:
+        conn.execute("""
         DELETE FROM sensor_data
         WHERE id = (
             SELECT id FROM sensor_data
