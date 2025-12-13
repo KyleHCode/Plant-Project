@@ -15,8 +15,6 @@ const int SOIL_MOISTURE_BASIL_PIN = 34; // GPIO pin connected to soil moisture s
 const int SOIL_MOISTURE_SPRING_ONION_PIN = 33; // GPIO pin connected to soil moisture sensor
 const int SOIL_MOISTURE_ROSEMARY_PIN = 32; // GPIO pin connected to soil moisture sensor
 
-
-
 // Initialize DHT sensor
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -46,7 +44,7 @@ struct SoilMoisture {
 void humidity_temp_read(TempHumidity &th);
 int light_level_read();
 void soil_moisture_read(SoilMoisture &sm);
-void connect_to_wifi();
+bool connect_to_wifi(unsigned long timeout_ms);
 void send_data(const TempHumidity &th, int light, const SoilMoisture &sm);
 int read_avg(int pin);
 
@@ -78,8 +76,11 @@ void loop()
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
 
+    if (!connect_to_wifi()) {
+    Serial.println("WiFi failed, sleeping...");
     esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // sleep for 1 hour
     esp_deep_sleep_start();
+    }
 }
 
 // Function implementations
@@ -143,13 +144,19 @@ int read_avg(int pin){
     return total / samples;
 }
 
-void connect_to_wifi() {
+bool connect_to_wifi(unsigned long timeout_ms = 15000) {
+    WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
+
+    unsigned long start = millis();
     Serial.print("Connecting to WiFi");
-    while(WiFi.status() != WL_CONNECTED) {
+    while(WiFi.status() != WL_CONNECTED && millis() - start < timeout_ms) {
         delay(500);
         Serial.print(".");
     }
+    Serial.println();
+
+    return WiFi.status() == WL_CONNECTED;
 }
 
 // Function to send data to server
@@ -157,14 +164,15 @@ void send_data(const TempHumidity &th, int light, const SoilMoisture &sm) {
     if (WiFi.status() != WL_CONNECTED) return ;
 
     HTTPClient http;
-    http.begin("http://your_server_endpoint");
+    http.begin("http://pi_server_ip:5000/sensor");
+    http.setTimeout(5000);
     http.addHeader("Content-Type", "application/json");
 
     String json = "{";
     json +="\"device\": \"device_001\",";
     json += "\"light\": " + String(light) + ",";
-    json += "\"temp\": " + String(th.temperature) + ",";
-    json += "\"humidity\": " + String(th.humidity) + ",";
+    json += "\"temp\": " + String(th.temperature, 2) + ",";
+    json += "\"humidity\": " + String(th.humidity, 2) + ",";
     json += "\"soil_moisture\": {";
     json += "\"basil\": " + String(sm.basil) + ",";
     json += "\"spring_onion\": " + String(sm.spring_onion) + ",";
@@ -172,11 +180,12 @@ void send_data(const TempHumidity &th, int light, const SoilMoisture &sm) {
     json += "}}";
 
     int code = http.POST(json);
+    String body = http.getString();
     http.end();
 
     Serial.print("Data sent with response code: ");
     Serial.println(code);
     if (code > 0) {
-        Serial.println(http.getString());
+        Serial.println(body);
     }
 }
