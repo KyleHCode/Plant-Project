@@ -46,7 +46,7 @@ struct SoilMoisture {
 bool humidity_temp_read(TempHumidity &th);
 int light_level_read();
 void soil_moisture_read(SoilMoisture &sm);
-bool connect_to_wifi(unsigned long timeout_ms);
+bool connect_to_wifi(unsigned long timeout_ms = 15000);
 void send_data(const TempHumidity &th, int light, const SoilMoisture &sm);
 int read_avg(int pin);
 
@@ -67,7 +67,7 @@ void loop()
         esp_deep_sleep_start();
     }
     
-    delay(1200); // Wait a sec for DHT sensor to stabilize
+    delay(2000); // Wait a sec for DHT sensor to stabilize
 
     TempHumidity temperature_humidity;
     SoilMoisture soil_moisture;
@@ -90,12 +90,11 @@ void loop()
     WiFi.mode(WIFI_OFF);
 
     esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
-    esp_deep_sleep_start()
+    esp_deep_sleep_start();
 
 }
 
 // Function implementations
-
 bool humidity_temp_read(TempHumidity &th)
 {
     th.humidity = dht.readHumidity();
