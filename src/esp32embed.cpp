@@ -1,7 +1,9 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <DHT.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <esp_sleep.h>
 
 // WiFi credentials
 const char* ssid     = "your_SSID";
@@ -41,7 +43,7 @@ struct SoilMoisture {
 };
 
 // Function prototypes
-void humidity_temp_read(TempHumidity &th);
+bool humidity_temp_read(TempHumidity &th);
 int light_level_read();
 void soil_moisture_read(SoilMoisture &sm);
 bool connect_to_wifi(unsigned long timeout_ms);
@@ -51,41 +53,50 @@ int read_avg(int pin);
 // Setup and Loop
 void setup() 
 {
-    Serial.begin(9600); 
+    Serial.begin(115200); 
     dht.begin();
-    pinMode(LIGHT_SENSOR_PIN, INPUT);
+
+    WiFi.setHostname("plant_device_001");
 }
 
 void loop()
 {
+    if (!connect_to_wifi()) {
+        Serial.println("WiFi failed, sleeping...");
+        esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
+        esp_deep_sleep_start();
+    }
+    
+    delay(1200); // Wait a sec for DHT sensor to stabilize
+
     TempHumidity temperature_humidity;
     SoilMoisture soil_moisture;
 
-    connect_to_wifi();
-
-    delay(1200); // Wait a sec for DHT sensor to stabilize
-    humidity_temp_read(temperature_humidity);
+    if (!humidity_temp_read(temperature_humidity)) {
+        Serial.println("Sensor read failed, skipping data send.");
+        // Break the loop and go to sleep
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_OFF);
+        esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
+        esp_deep_sleep_start();
+    };
     
     int light = light_level_read();
-    
     soil_moisture_read(soil_moisture);
-
 
     send_data(temperature_humidity, light, soil_moisture);
 
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
 
-    if (!connect_to_wifi()) {
-    Serial.println("WiFi failed, sleeping...");
-    esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // sleep for 1 hour
-    esp_deep_sleep_start();
-    }
+    esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
+    esp_deep_sleep_start()
+
 }
 
 // Function implementations
 
-void humidity_temp_read(TempHumidity &th)
+bool humidity_temp_read(TempHumidity &th)
 {
     th.humidity = dht.readHumidity();
     th.temperature = dht.readTemperature();
@@ -93,7 +104,7 @@ void humidity_temp_read(TempHumidity &th)
     if (isnan(th.humidity) || isnan(th.temperature))
     {
         Serial.println("Failed to read from DHT sensor!");
-        return;
+        return false;
     }
 
     Serial.print("Humidity: ");
@@ -102,6 +113,8 @@ void humidity_temp_read(TempHumidity &th)
     Serial.print("Temperature: ");
     Serial.print(th.temperature);
     Serial.println(" *C ");
+
+    return true;
 }
 
 int light_level_read()
@@ -156,28 +169,38 @@ bool connect_to_wifi(unsigned long timeout_ms = 15000) {
     }
     Serial.println();
 
-    return WiFi.status() == WL_CONNECTED;
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.print("Connected, IP: ");
+        Serial.println(WiFi.localIP());
+        return true;
+    }
+    return false;
 }
 
 // Function to send data to server
 void send_data(const TempHumidity &th, int light, const SoilMoisture &sm) {
-    if (WiFi.status() != WL_CONNECTED) return ;
+    if (WiFi.status() != WL_CONNECTED) return;
+
+    const size_t capacity = JSON_OBJECT_SIZE(4) + JSON_OBJECT_SIZE(3) + 80;
+    StaticJsonDocument<capacity> doc;
+
+    doc["device"] = "device_001";
+    doc["light"] = light;
+    doc["temp"] = th.temperature;
+    doc["humidity"] = th.humidity;
+
+    JsonObject soil_moisture = doc.createNestedObject("soil_moisture");
+    soil_moisture["basil"] = sm.basil;
+    soil_moisture["spring_onion"] = sm.spring_onion;
+    soil_moisture["rosemary"] = sm.rosemary;
+
+    String json;
+    serializeJson(doc, json);
 
     HTTPClient http;
     http.begin("http://pi_server_ip:5000/sensor");
     http.setTimeout(5000);
     http.addHeader("Content-Type", "application/json");
-
-    String json = "{";
-    json +="\"device\": \"device_001\",";
-    json += "\"light\": " + String(light) + ",";
-    json += "\"temp\": " + String(th.temperature, 2) + ",";
-    json += "\"humidity\": " + String(th.humidity, 2) + ",";
-    json += "\"soil_moisture\": {";
-    json += "\"basil\": " + String(sm.basil) + ",";
-    json += "\"spring_onion\": " + String(sm.spring_onion) + ",";
-    json += "\"rosemary\": " + String(sm.rosemary);
-    json += "}}";
 
     int code = http.POST(json);
     String body = http.getString();
