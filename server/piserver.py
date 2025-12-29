@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template, url_for
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 app = Flask(__name__)
@@ -35,7 +35,7 @@ def init_db():
 def receive_sensor_data():
     data = request.get_json()
 
-    ts = datetime.utcnow().isoformat()
+    ts = datetime.now(timezone.utc).isoformat()
     device = data.get('device', 'unknown')
 
     light = data.get('light')
