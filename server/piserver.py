@@ -4,11 +4,14 @@ from datetime import datetime, timezone
 
 
 app = Flask(__name__)
-DB = 'plants.db'
+DB = "/home/killerbees/plant/plants.db"
 
 # Connects to the SQLite database
 def get_conn():
-    return sqlite3.connect(DB, check_same_thread=False)
+    conn = sqlite3.connect(DB, timeout=10)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    return conn
 
 # Initializes the database and creates the sensor_data table if it doesn't exist
 def init_db():
@@ -26,6 +29,8 @@ def init_db():
         rosemary INTEGER
         )
         """)
+        conn.execute("""CREATE INDEX IF NOT EXISTS idx_sensor_ts ON sensor_data(ts)""")
+        conn.commit()
 
 # =======================================
 # ========== Main Endpoints =============
@@ -33,7 +38,7 @@ def init_db():
 
 @app.route('/sensor', methods=['POST'])
 def receive_sensor_data():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     ts = datetime.now(timezone.utc).isoformat()
     device = data.get('device', 'unknown')
@@ -53,6 +58,7 @@ def receive_sensor_data():
         (ts, device, light, temp, humidity, basil, spring_onion, rosemary)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (ts, device, light, temp, humidity, basil, spring_onion, rosemary))
+        conn.commit()
     
     return jsonify({"status": "success", "ts": ts})
 
@@ -69,7 +75,7 @@ def index():
 def latest():
     with get_conn() as conn:
         row = conn.execute("""
-            SELECT ts, device, light, temp, humidity, basil, spring_onion, rosemary
+            SELECT *
             FROM sensor_data
             ORDER BY id DESC
             LIMIT 1
@@ -78,8 +84,7 @@ def latest():
     if row is None:
         return jsonify({"status": "empty"})
 
-    keys = ["ts","device","light","temp","humidity","basil","spring_onion","rosemary"]
-    return jsonify(dict(zip(keys, row)))
+    return jsonify(dict(row))
 
 # Test endpoint to delete the latest sensor data
 @app.route("/delete_latest", methods=["POST"])
@@ -94,11 +99,10 @@ def delete_latest():
         )
     """)
     conn.commit()
-    conn.close()
 
     return jsonify({"status": "deleted latest"})
 
 # Run the app    
 if __name__ == "__main__":
     init_db()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)

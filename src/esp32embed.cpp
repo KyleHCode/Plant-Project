@@ -46,7 +46,7 @@ struct SoilMoisture {
 bool humidity_temp_read(TempHumidity &th);
 int light_level_read();
 void soil_moisture_read(SoilMoisture &sm);
-bool connect_to_wifi(unsigned long timeout_ms);
+bool connect_to_wifi(unsigned long timeout_ms = 15000);
 void send_data(const TempHumidity &th, int light, const SoilMoisture &sm);
 int read_avg(int pin);
 
@@ -67,7 +67,7 @@ void loop()
         esp_deep_sleep_start();
     }
     
-    delay(1200); // Wait a sec for DHT sensor to stabilize
+    delay(2000); // Wait a sec for DHT sensor to stabilize
 
     TempHumidity temperature_humidity;
     SoilMoisture soil_moisture;
@@ -90,12 +90,11 @@ void loop()
     WiFi.mode(WIFI_OFF);
 
     esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
-    esp_deep_sleep_start()
+    esp_deep_sleep_start();
 
 }
 
 // Function implementations
-
 bool humidity_temp_read(TempHumidity &th)
 {
     th.humidity = dht.readHumidity();
@@ -159,6 +158,7 @@ int read_avg(int pin){
 
 bool connect_to_wifi(unsigned long timeout_ms = 15000) {
     WiFi.mode(WIFI_STA);
+    WiFi.setHostname("plant_device_001");
     WiFi.begin(ssid, password);
 
     unsigned long start = millis();
@@ -182,7 +182,7 @@ void send_data(const TempHumidity &th, int light, const SoilMoisture &sm) {
     if (WiFi.status() != WL_CONNECTED) return;
 
     const size_t capacity = JSON_OBJECT_SIZE(4) + JSON_OBJECT_SIZE(3) + 80;
-    StaticJsonDocument<capacity> doc;
+    StaticJsonDocument<256> doc;
 
     doc["device"] = "device_001";
     doc["light"] = light;
@@ -198,7 +198,7 @@ void send_data(const TempHumidity &th, int light, const SoilMoisture &sm) {
     serializeJson(doc, json);
 
     HTTPClient http;
-    http.begin("http://pi_server_ip:5000/sensor");
+    http.begin("http://pihost.local:5000/sensor");
     http.setTimeout(5000);
     http.addHeader("Content-Type", "application/json");
 
