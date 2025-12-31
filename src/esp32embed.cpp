@@ -12,6 +12,14 @@ const char* password = "your_PASSWORD";
 // Define the pin and sensor type
 #define DHTPIN 4       // GPIO pin connected to DATA
 #define DHTTYPE DHT11   // DHT 11
+
+#define ARM_PIN 27 // GPIO pin connected to arm control
+RTC_DATA_ATTR bool armed = false;
+
+#define HAS_BASIL 1
+#define HAS_SPRING_ONION 0
+#define HAS_ROSEMARY 0
+
 const int LIGHT_SENSOR_PIN = 35; // GPIO pin connected to photoresistor
 const int SOIL_MOISTURE_BASIL_PIN = 34; // GPIO pin connected to soil moisture sensor
 const int SOIL_MOISTURE_SPRING_ONION_PIN = 33; // GPIO pin connected to soil moisture sensor
@@ -53,6 +61,7 @@ int read_avg(int pin);
 // Setup and Loop
 void setup() 
 {
+    pinMode(ARM_PIN, INPUT_PULLUP);
     Serial.begin(115200); 
     dht.begin();
 
@@ -61,6 +70,21 @@ void setup()
 
 void loop()
 {
+// If not armed yet, wait here until button press
+    if (!armed) {
+        Serial.println("DISARMED: press button to arm and start logging.");
+
+        // Wait for press
+        while (digitalRead(ARM_PIN) == HIGH) { delay(50); }
+
+        // Debounce + wait for release
+        while (digitalRead(ARM_PIN) == LOW) { delay(50); }
+        delay(200);
+
+        armed = true;
+        Serial.println("ARMED! Starting logging cycle...");
+    }
+    
     if (!connect_to_wifi()) {
         Serial.println("WiFi failed, sleeping...");
         esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
@@ -126,13 +150,26 @@ int light_level_read()
 
 void soil_moisture_read(SoilMoisture &soil_moisture)
 {
-    soil_moisture.basil        = map(read_avg(SOIL_MOISTURE_BASIL_PIN), 2400, 900, 0, 100); // 2400 (dry) to 900 (wet)
-    soil_moisture.spring_onion = map(read_avg(SOIL_MOISTURE_SPRING_ONION_PIN), 2400, 900, 0, 100); 
-    soil_moisture.rosemary     = map(read_avg(SOIL_MOISTURE_ROSEMARY_PIN), 2400, 900, 0, 100);  
-    soil_moisture.basil        = constrain(soil_moisture.basil,        0, 100); // Ensure values are within 0-100%
-    soil_moisture.spring_onion = constrain(soil_moisture.spring_onion, 0, 100);
-    soil_moisture.rosemary     = constrain(soil_moisture.rosemary,     0, 100); 
+    #if HAS_BASIL
+    soil_moisture.basil = map(read_avg(SOIL_MOISTURE_BASIL_PIN), 2400, 900, 0, 100);
+    soil_moisture.basil = constrain(soil_moisture.basil, 0, 100);
+    #else
+    soil_moisture.basil = -1;
+    #endif
 
+    #if HAS_SPRING_ONION
+    soil_moisture.spring_onion = map(read_avg(SOIL_MOISTURE_SPRING_ONION_PIN), 2400, 900, 0, 100);
+    soil_moisture.spring_onion = constrain(soil_moisture.spring_onion, 0, 100);
+    #else
+    soil_moisture.spring_onion = -1;
+    #endif
+
+    #if HAS_ROSEMARY
+    soil_moisture.rosemary = map(read_avg(SOIL_MOISTURE_ROSEMARY_PIN), 2400, 900, 0, 100);
+    soil_moisture.rosemary = constrain(soil_moisture.rosemary, 0, 100);
+    #else
+    soil_moisture.rosemary = -1;
+    #endif
     // Print soil moisture levels
     int values[3];
     soil_moisture.to_array(values);
@@ -181,7 +218,6 @@ bool connect_to_wifi(unsigned long timeout_ms = 15000) {
 void send_data(const TempHumidity &th, int light, const SoilMoisture &sm) {
     if (WiFi.status() != WL_CONNECTED) return;
 
-    const size_t capacity = JSON_OBJECT_SIZE(4) + JSON_OBJECT_SIZE(3) + 80;
     StaticJsonDocument<256> doc;
 
     doc["device"] = "device_001";
@@ -197,8 +233,9 @@ void send_data(const TempHumidity &th, int light, const SoilMoisture &sm) {
     String json;
     serializeJson(doc, json);
 
+    WiFiClient client;
     HTTPClient http;
-    http.begin("http://pihost.local:5000/sensor");
+    http.begin(client, "http://192.168.254.153:5000/sensor");
     http.setTimeout(5000);
     http.addHeader("Content-Type", "application/json");
 
