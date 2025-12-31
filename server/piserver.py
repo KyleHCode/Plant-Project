@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 
 app = Flask(__name__)
-DB = "/home/pi/plant/plants.db"
+DB = "/home/killerbees/plant/plants.db"
 
 # Connects to the SQLite database
 def get_conn():
