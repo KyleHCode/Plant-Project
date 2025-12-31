@@ -94,6 +94,7 @@ void loop()
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
 
+    Serial.println("Disconnected from WiFi. Going to sleep for 1 hour...");
     esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
     esp_deep_sleep_start();
 
@@ -132,7 +133,7 @@ int light_level_read()
 void soil_moisture_read(SoilMoisture &soil_moisture)
 {
     #if HAS_BASIL
-    soil_moisture.basil = map(read_avg(SOIL_MOISTURE_BASIL_PIN), 2400, 900, 0, 100);
+    soil_moisture.basil = map(read_avg(SOIL_MOISTURE_BASIL_PIN), 900, 2400, 0, 100);
     soil_moisture.basil = constrain(soil_moisture.basil, 0, 100);
     #else
     soil_moisture.basil = -1;
@@ -169,7 +170,7 @@ int read_avg(int pin){
     long total = 0;
     for(int i = 0; i < samples; i++){
         total += analogRead(pin);
-        delay(10);
+        delay(2000);
     }
     return total / samples;
 }
