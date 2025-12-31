@@ -6,15 +6,12 @@
 #include <esp_sleep.h>
 
 // WiFi credentials
-const char* ssid     = "your_SSID";
-const char* password = "your_PASSWORD";
+const char* ssid     = "Frontier8864";
+const char* password = "2727914437";
 
 // Define the pin and sensor type
 #define DHTPIN 4       // GPIO pin connected to DATA
 #define DHTTYPE DHT11   // DHT 11
-
-#define ARM_PIN 27 // GPIO pin connected to arm control
-RTC_DATA_ATTR bool armed = false;
 
 #define HAS_BASIL 1
 #define HAS_SPRING_ONION 0
@@ -61,7 +58,6 @@ int read_avg(int pin);
 // Setup and Loop
 void setup() 
 {
-    pinMode(ARM_PIN, INPUT_PULLUP);
     Serial.begin(115200); 
     dht.begin();
 
@@ -69,22 +65,7 @@ void setup()
 }
 
 void loop()
-{
-// If not armed yet, wait here until button press
-    if (!armed) {
-        Serial.println("DISARMED: press button to arm and start logging.");
-
-        // Wait for press
-        while (digitalRead(ARM_PIN) == HIGH) { delay(50); }
-
-        // Debounce + wait for release
-        while (digitalRead(ARM_PIN) == LOW) { delay(50); }
-        delay(200);
-
-        armed = true;
-        Serial.println("ARMED! Starting logging cycle...");
-    }
-    
+{  
     if (!connect_to_wifi()) {
         Serial.println("WiFi failed, sleeping...");
         esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
@@ -193,7 +174,7 @@ int read_avg(int pin){
     return total / samples;
 }
 
-bool connect_to_wifi(unsigned long timeout_ms = 15000) {
+bool connect_to_wifi(unsigned long timeout_ms) {
     WiFi.mode(WIFI_STA);
     WiFi.setHostname("plant_device_001");
     WiFi.begin(ssid, password);
