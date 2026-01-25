@@ -24,7 +24,7 @@ void setup()
 
 void loop()
 {  
-    if (!connect_to_wifi()) {
+    if (!connect_to_wifi(ssid, password, hostname)) {
         Serial.println("WiFi failed, sleeping...");
         esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
         esp_deep_sleep_start();
@@ -34,7 +34,7 @@ void loop()
 
     TempHumidity temperature_humidity;
 
-    if (!humidity_temp_read(temperature_humidity)) {
+    if (!humidity_temp_read(dht, temperature_humidity)) {
         Serial.println("Sensor read failed, skipping data send.");
         // Break the loop and go to sleep
         WiFi.disconnect(true);
@@ -43,14 +43,14 @@ void loop()
         esp_deep_sleep_start();
     };
     
-    int light = light_level_read();
+    int light = light_level_read(LIGHT_SENSOR_PIN);
     
     // Read all plant moisture levels
     for (int i = 0; i < NUM_PLANTS; i++) {
         plants[i].readMoisture();
     }
 
-    send_data(temperature_humidity, light);
+    send_data(temperature_humidity, light, plants, NUM_PLANTS, server_url, device_id);
 
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);

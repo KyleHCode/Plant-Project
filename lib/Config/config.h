@@ -6,6 +6,11 @@
 // WiFi credentials
 extern const char* ssid;
 extern const char* password;
+extern const char* hostname;
+
+// Server configuration
+extern const char* server_url;
+extern const char* device_id;
 
 // Pin definitions
 #define DHTPIN 4

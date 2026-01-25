@@ -1,10 +1,10 @@
 #include "connect.h"
-#include "config.h"
 #include <Arduino.h>
+#include <WiFi.h>
 
-bool connect_to_wifi(unsigned long timeout_ms) {
+bool connect_to_wifi(const char* ssid, const char* password, const char* hostname, unsigned long timeout_ms) {
     WiFi.mode(WIFI_STA);
-    WiFi.setHostname("plant_device_001");
+    WiFi.setHostname(hostname);
     WiFi.begin(ssid, password);
 
     unsigned long start = millis();

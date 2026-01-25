@@ -1,12 +1,8 @@
 #include <Arduino.h>
-#include <DHT.h>
 #include "dataread.h"
-#include "config.h"
-
-extern DHT dht;
 
 // Function implementations
-bool humidity_temp_read(TempHumidity &th)
+bool humidity_temp_read(DHT &dht, TempHumidity &th)
 {
     th.humidity = dht.readHumidity();
     th.temperature = dht.readTemperature();
@@ -27,9 +23,9 @@ bool humidity_temp_read(TempHumidity &th)
     return true;
 }
 
-int light_level_read()
+int light_level_read(int pin)
 {
-    int light_level = analogRead(LIGHT_SENSOR_PIN);
+    int light_level = analogRead(pin);
     Serial.print("Light Level (ADC): ");
     Serial.println(light_level);
     return light_level;
