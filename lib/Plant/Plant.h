@@ -8,25 +8,27 @@ public:
     const char* name;
     int pin;
     int moisture;
-    bool enabled;
     
-    Plant(const char* plant_name, int pin_number, bool is_enabled = true) 
-        : name(plant_name), pin(pin_number), enabled(is_enabled), moisture(-1) {}
+    static int count;  // Track number of Plant instances
     
-    void readMoisture() {
-        if (!enabled) {
-            moisture = -1;
-            return;
-        }
+    Plant(const char* plant_name, int pin_number) 
+        : name(plant_name), pin(pin_number){
+        count++;
+    }
+    
+    ~Plant() {
+        count--;
+    }
+    
+    static int get_count() {
+        return count;
+    }
+    
+    void read_moisture() {
         int raw = read_avg(pin);
         moisture = map(raw, 900, 2400, 0, 100);
         moisture = constrain(moisture, 0, 100);
-        
-        Serial.print(name);
-        Serial.print(" Level (%): ");
-        Serial.println(moisture);
     }
-
 private:
     int read_avg(int analog_pin) {
         const int samples = 10;

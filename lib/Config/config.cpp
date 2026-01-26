@@ -6,10 +6,12 @@ const char* hostname = "plant_device_001";
 const char* server_url = "http://192.168.254.153:5000/sensor";
 const char* device_id = "device_001";
 
+// Initialize Plant static member
+int Plant::count = 0;
+
 // Plant array definition
 Plant plants[] = {
-    Plant("basil", SOIL_MOISTURE_BASIL_PIN, HAS_BASIL),
-    Plant("spring_onion", SOIL_MOISTURE_SPRING_ONION_PIN, HAS_SPRING_ONION),
-    Plant("rosemary", SOIL_MOISTURE_ROSEMARY_PIN, HAS_ROSEMARY)
+    Plant("basil", SOIL_MOISTURE_BASIL_PIN),
+    //Plant("spring_onion", SOIL_MOISTURE_SPRING_ONION_PIN),
+    //Plant("rosemary", SOIL_MOISTURE_ROSEMARY_PIN)
 };
-const int NUM_PLANTS = sizeof(plants) / sizeof(plants[0]);

@@ -5,6 +5,6 @@
 #include "Plant.h"
 
 // Function declaration
-void send_data(const TempHumidity &th, int light, Plant plants[], int num_plants, const char* server_url, const char* device_id);
+void send_data(const TempHumidity &th, int light, Plant plants[], const char* server_url, const char* device_id);
 
 #endif // DATASENDER_H

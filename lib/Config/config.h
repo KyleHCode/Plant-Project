@@ -21,13 +21,7 @@ extern const char* device_id;
 #define SOIL_MOISTURE_SPRING_ONION_PIN 33
 #define SOIL_MOISTURE_ROSEMARY_PIN 32
 
-// Plant configuration
-#define HAS_BASIL 1
-#define HAS_SPRING_ONION 0
-#define HAS_ROSEMARY 0
-
 // Plant array
 extern Plant plants[];
-extern const int NUM_PLANTS;
 
 #endif // CONFIG_H

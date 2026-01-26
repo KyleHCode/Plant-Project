@@ -3,9 +3,10 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "datasender.h"
+#include "Plant.h"
 
 // Function to send data to server
-void send_data(const TempHumidity &th, int light, Plant plants[], int num_plants, const char* server_url, const char* device_id) {
+void send_data(const TempHumidity &th, int light, Plant plants[], const char* server_url, const char* device_id) {
     if (WiFi.status() != WL_CONNECTED) return;
 
     StaticJsonDocument<256> doc;
@@ -16,7 +17,7 @@ void send_data(const TempHumidity &th, int light, Plant plants[], int num_plants
     doc["humidity"] = th.humidity;
 
     JsonObject soil_moisture = doc.createNestedObject("soil_moisture");
-    for (int i = 0; i < num_plants; i++) {
+    for (int i = 0; i < Plant::get_count(); i++) {
         soil_moisture[plants[i].name] = plants[i].moisture;
     }
 

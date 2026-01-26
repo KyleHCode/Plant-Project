@@ -1,14 +1,12 @@
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <DHT.h>
 #include <WiFi.h>
-#include <HTTPClient.h>
 #include <esp_sleep.h>
 #include "config.h"
 #include "connect.h"
-#include "Plant.h"
 #include "dataread.h"
 #include "datasender.h"
+#include "Prints.h"
 
 // Initialize DHT sensor
 DHT dht(DHTPIN, DHTTYPE);
@@ -18,8 +16,6 @@ void setup()
 {
     Serial.begin(115200); 
     dht.begin();
-
-    WiFi.setHostname("plant_device_001");
 }
 
 void loop()
@@ -42,15 +38,20 @@ void loop()
         esp_sleep_enable_timer_wakeup(60ULL * 60ULL * 1000000ULL); // 1 hour
         esp_deep_sleep_start();
     };
-    
-    int light = light_level_read(LIGHT_SENSOR_PIN);
+
+    int light_level = light_level_read(LIGHT_SENSOR_PIN);
     
     // Read all plant moisture levels
-    for (int i = 0; i < NUM_PLANTS; i++) {
-        plants[i].readMoisture();
+    for (int i = 0; i < Plant::get_count(); i++) {
+        plants[i].read_moisture();
     }
 
-    send_data(temperature_humidity, light, plants, NUM_PLANTS, server_url, device_id);
+    print_temp_humidity(temperature_humidity);
+    print_light(light_level);
+    print_moisture(plants);
+    
+    send_data(temperature_humidity, light_level, plants, server_url, device_id);
+
 
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
